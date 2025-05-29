@@ -106,7 +106,7 @@ public static class SceneLoaderToolbarInjector
 
     static void OpenScene(int index)
     {
-        string scenePath = EditorBuildSettings.scenes[index].path;
+        string scenePath = EditorBuildSettings.scenes.Where(x=> System.IO.File.Exists(x.path)).ToList()[index].path;
         if (!string.IsNullOrEmpty(scenePath) && System.IO.File.Exists(scenePath))
         {
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
@@ -120,7 +120,7 @@ public static class SceneLoaderToolbarInjector
 
     static void PlayFromScene(int index)
     {
-        string scenePath = EditorBuildSettings.scenes[index].path;
+        string scenePath = EditorBuildSettings.scenes.Where(x => System.IO.File.Exists(x.path)).ToList()[index].path;
         if (!string.IsNullOrEmpty(scenePath) && System.IO.File.Exists(scenePath))
         {
             var currentScenePath = EditorSceneManager.GetActiveScene().path;
