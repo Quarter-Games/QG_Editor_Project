@@ -488,7 +488,7 @@ GameObject:
   - component: {fileID: 1204814073}
   - component: {fileID: 1204814072}
   m_Layer: 0
-  m_Name: Circle
+  m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -639,8 +639,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f86c7caac216c964b8c0aa57f808c6bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 10
-  labelColor: {r: 0.791691, g: 0.94716984, b: 0.9126418, a: 1}
+  moveSpeed: 5
+  labelColor: {r: 0.7659094, g: 1, b: 0.20188677, a: 1}
 --- !u!1 &1331159155
 GameObject:
   m_ObjectHideFlags: 0
