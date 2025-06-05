@@ -118,6 +118,21 @@ public static class SceneLoaderToolbarInjector
         }
     }
 
+    [MenuItem("Tools/Start From Zero Scene %#I", false, 1000)] // Ctrl+Shift+L (Windows) or Cmd+Shift+L (Mac)
+    public static void StartFromZeroScene()
+    {
+        var zeroScene = EditorBuildSettings.scenes[0];
+        if (zeroScene != null && System.IO.File.Exists(zeroScene.path))
+        {
+            EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+            EditorSceneManager.OpenScene(zeroScene.path);
+            EditorApplication.isPlaying = true;
+        }
+        else
+        {
+            Debug.LogError("Zero scene not found or does not exist.");
+        }
+    }
     static void PlayFromScene(int index)
     {
         string scenePath = EditorBuildSettings.scenes.Where(x => System.IO.File.Exists(x.path)).ToList()[index].path;
