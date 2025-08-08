@@ -28,7 +28,6 @@ public partial struct ProjectileDamageSystem : ISystem
     {
         foreach (var (damage, entity) in SystemAPI.Query<RefRW<ProjectileDamage>>().WithEntityAccess())
         {
-
         }
     }
 }
