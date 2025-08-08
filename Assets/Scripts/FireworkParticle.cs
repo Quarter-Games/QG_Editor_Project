@@ -7,6 +7,10 @@ public struct FireworkParticle : IComponentData
     public float3 Position;
     public float Lifetime;
     public float StartLifetime;
+    public float MaxSpeed;
+    public float CurrentLifetime;
+    internal float LifeTime;
+    internal float GravityStrength;
 }
 
 public struct ParticleSize : IComponentData
