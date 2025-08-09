@@ -12,14 +12,15 @@ public class FireworkSpawnerBaker : Baker<FireworkSpawnerAuthoring>
     public override void Bake(FireworkSpawnerAuthoring authoring)
     {
         var entity = GetEntity(TransformUsageFlags.None);
-        AddComponentObject(entity, new FireworkSpawnerComponent
+
+        AddComponent(entity, new FireworkSpawnerComponent
         {
             Prefab = GetEntity(authoring.FireworkPrefab, TransformUsageFlags.Dynamic)
         });
     }
 }
 
-public class FireworkSpawnerComponent : IComponentData
+public struct FireworkSpawnerComponent : IComponentData
 {
     public Entity Prefab;
 }
