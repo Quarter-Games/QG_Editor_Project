@@ -13,10 +13,7 @@ public partial struct ParticleMovementSystem : ISystem
 
         foreach (var (vel, trans) in SystemAPI.Query<RefRW<Velocity>, RefRW<LocalTransform>>())
         {
-            // Apply gravity (only Y axis)
             vel.ValueRW.Value.y += gravity * deltaTime;
-
-            // Move particle
             trans.ValueRW.Position += vel.ValueRW.Value * deltaTime;
         }
     }
