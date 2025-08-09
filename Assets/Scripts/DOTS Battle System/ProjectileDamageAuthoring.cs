@@ -68,17 +68,14 @@ public partial struct ProjectileDamageSystem : ISystem
                 Entity projectileEntity = aIsProjectile ? entityA : entityB;
                 Entity enemyEntity = aIsEnemy ? entityA : entityB;
 
-                //EnemyLookup[enemyEntity] = enemyHealth;
                 var damage = (int)ProjectileLookup[projectileEntity].Damage;
 
-                // Create damage event entity
                 Entity eventEntity = ECB.CreateEntity(0);
                 ECB.AddComponent(0, eventEntity, new DamageEvent
                 {
                     Target = enemyEntity,
                     Amount = damage
                 });
-                // Optionally destroy projectile
                 ECB.DestroyEntity(0, projectileEntity);
             }
         }
@@ -105,12 +102,11 @@ public partial struct ApplyDamageSystem : ISystem
                 SystemAPI.SetComponent(damageEvent.Target, health);
                 if (health.CurrentHealth <= 0)
                 {
-                    // Optionally, handle enemy death here
-                    ecb.DestroyEntity(damageEvent.Target); // Remove enemy entity if health is zero
+                    ecb.DestroyEntity(damageEvent.Target);
                 }
             }
 
-            ecb.DestroyEntity(entity); // Remove event
+            ecb.DestroyEntity(entity);
         }
 
         ecb.Playback(state.EntityManager);

@@ -19,7 +19,7 @@ public class ProjectileAuthoring : MonoBehaviour
                 Speed = authoring.speed,
                 Lifetime = authoring.lifetime,
                 Timer = authoring.lifetime,
-                Direction = Vector2.right // Default direction, can be set later
+                Direction = Vector2.right
             });
         }
     }
@@ -30,15 +30,11 @@ public struct Projectile : IComponentData
     public float Lifetime;
     public float Timer;
     public float2 Direction;
-    public void Update(float deltaTime)
+    public void UpdateTimer(float deltaTime)
     {
         Timer -= deltaTime;
-        if (Timer <= 0f)
-        {
-            // Handle projectile expiration logic here
-            Debug.Log("Projectile expired");
-        }
     }
+
 }
 [BurstCompile]
 public partial struct ProjectileSystem : ISystem
@@ -46,26 +42,27 @@ public partial struct ProjectileSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         var deltaTime = SystemAPI.Time.DeltaTime;
+
+        var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+
         foreach (var (projectile, entity) in SystemAPI.Query<RefRW<Projectile>>().WithEntityAccess())
         {
-            // Update the projectile's timer  
+            projectile.ValueRW.Timer -= deltaTime;
 
-            // Move the projectile based on its direction and speed  
-            // Handle projectile expiration  
-            if (projectile.ValueRW.Timer <= 0f)
+            if (projectile.ValueRO.Timer <= 0f)
             {
-                projectile.ValueRW.Update(deltaTime);
-                //EntityCommandBuffer entityCommandBuffer = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-                //entityCommandBuffer.DestroyEntity(entity);
+                ecb.DestroyEntity(entity);
+                Debug.Log("Projectile destroyed");
             }
             else
             {
-
                 var transform = state.EntityManager.GetComponentData<LocalTransform>(entity);
                 transform.Position += new float3(projectile.ValueRW.Direction.x, projectile.ValueRW.Direction.y, 0) * projectile.ValueRW.Speed * deltaTime;
                 state.EntityManager.SetComponentData(entity, transform);
-
             }
         }
+
+        ecb.Playback(state.EntityManager);
+        ecb.Dispose();
     }
 }
