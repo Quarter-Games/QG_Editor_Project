@@ -20,4 +20,4 @@ MonoBehaviour:
   maxFloor: 99
   gizmoColor: {r: 0.6415094, g: 0.40245637, b: 0.40245637, a: 1}
   keyId: 
-  decoration: {fileID: 0}
+  decoration: {fileID: 11400000, guid: 5485ab482af705346a744f42fccf33e5, type: 2}
