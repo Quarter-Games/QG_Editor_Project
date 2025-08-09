@@ -44,7 +44,6 @@ public struct AutomatedTower : IComponentData
             Timer = projData.Lifetime, // Initialize the timer to the lifetime
             Direction = direction,
         });
-        ProjectilePrefab = temp; // Store the projectile entity for future reference
         state.EntityManager.SetComponentData(temp, new LocalTransform
         {
             Position = towerPosition,

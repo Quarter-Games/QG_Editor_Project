@@ -19,6 +19,14 @@ public struct EnemyHealth : IComponentData
 {
     public int MaxHealth;
     public int CurrentHealth;
+    public void TakeDamage(int damage)
+    {
+        CurrentHealth -= damage;
+        if (CurrentHealth < 0)
+        {
+            CurrentHealth = 0; // Ensure health doesn't go below zero
+        }
+    }
 
 }
 [BurstCompile]
