@@ -15,13 +15,8 @@ public partial struct ParticleLifetimeSystem : ISystem
                  SystemAPI.Query<RefRW<Lifetime>, RefRW<LocalTransform>>()
                            .WithEntityAccess())
         {
-            // Countdown lifetime
             lifetime.ValueRW.Value -= deltaTime;
-
-            // Shrink scale proportionally to remaining lifetime
             transform.ValueRW.Scale = math.max(0f, transform.ValueRW.Scale - deltaTime * 0.99f);
-
-            // Destroy when expired
             if (lifetime.ValueRW.Value <= 0f)
                 ecb.DestroyEntity(entity);
         }

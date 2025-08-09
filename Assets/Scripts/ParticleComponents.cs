@@ -18,6 +18,6 @@ public struct Gravity : IComponentData
 
 public struct ParticleColor : IComponentData
 {
-    public int Name; // Shader property ID
+    public int Name;
     public float4 Value;
 }

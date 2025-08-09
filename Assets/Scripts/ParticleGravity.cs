@@ -21,7 +21,6 @@ public partial struct GravitySystem : ISystem
                  SystemAPI.Query<RefRW<Velocity>, RefRO<Gravity>, RefRO<Lifetime>>()
                  .WithEntityAccess())
         {
-            // Apply gravity (negative Y direction)
             vel.ValueRW.Value.y -= grav.ValueRO.Value * deltaTime;
         }
     }
