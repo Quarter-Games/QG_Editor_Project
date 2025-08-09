@@ -6,87 +6,55 @@ using UnityEngine.AI;
 [ExecuteAlways]
 public class DungeonGenerator : MonoBehaviour
 {
-    [Header("Seed & Scale")]
-    public int seed = 12345;
+    [Header("Seed & Scale")] public int seed = 12345;
     public float cellSize = 1f;
 
-    [Header("Dungeon Size")]
-    public int dungeonWidth = 64;
+    [Header("Dungeon Size")] public int dungeonWidth = 64;
     public int dungeonDepth = 64;
     public int floors = 2;
     public float floorHeight = 6f;
 
-    [Header("BSP")]
-    public int maxSplitDepth = 4;
-    public int minLeafSize = 12; 
+    [Header("BSP")] public int maxSplitDepth = 4;
+    public int minLeafSize = 12;
     public int corridorWidth = 2;
 
-    [Header("Rooms & Quest")]
-    public List<RoomType> roomTypes;
+    [Header("Rooms & Quest")] public List<RoomType> roomTypes;
     public int numLockedRooms = 1;
     public int numTreasureRooms = 1;
 
-    [Header("Prefabs")]
-    public GameObject floorTilePrefab;
+    [Header("Prefabs")] public GameObject floorTilePrefab;
     public GameObject wallSegmentPrefab;
     public GameObject closedDoorPrefab;
     public GameObject keyPickupPrefab;
     public GameObject stairsUpPrefab;
     public GameObject stairsDownPrefab;
 
-    [Header("NavMesh")]
-    public NavMeshSurface navSurface;
+    [Header("NavMesh")] public NavMeshSurface navSurface;
 
-    [Header("Runtime")]
-    public bool autoGenerateOnStart = false;
+    [Header("Runtime")] public bool autoGenerateOnStart = false;
     public bool clearBeforeGenerate = true;
 
-    // Internal structures
     private System.Random rng;
     private List<Room> allRooms = new();
     private List<Corridor> allCorridors = new();
     private List<(Vector3 from, Vector3 to)> stairLinks = new();
     private Dictionary<Room, GameObject> roomRoots = new();
 
-    #region Data
     private struct RectI { public int x, z, w, d; public RectI(int x, int z, int w, int d) { this.x = x; this.z = z; this.w = w; this.d = d; } }
-    private class BSPNode
-    {
-        public RectI area;
-        public BSPNode left, right;
-        public RectI? roomRect;
-        public int floorIdx;
-        public BSPNode(RectI r, int floor) { area = r; floorIdx = floor; }
-    }
-    private class Room
-    {
-        public RectI rect;
-        public int floorIdx;
-        public RoomType type;
-        public string keyId; // for Key/Locked mapping
-        public Vector3 Center(float yBase, float hPerFloor)
-            => new Vector3((rect.x + rect.w / 2f), yBase + floorIdx * hPerFloor, (rect.z + rect.d / 2f));
-    }
+    private class BSPNode { public RectI area; public BSPNode left, right; public RectI? roomRect; public int floorIdx; public BSPNode(RectI r, int floor) { area = r; floorIdx = floor; } }
+    private class Room { public RectI rect; public int floorIdx; public RoomType type; public string keyId; public Vector3 Center(float yBase, float hPerFloor) => new Vector3((rect.x + rect.w / 2f), yBase + floorIdx * hPerFloor, (rect.z + rect.d / 2f)); }
     private struct Corridor { public Vector3 a, b; public int floor; }
-    #endregion
 
-    void Start()
-    {
-        if (Application.isPlaying && autoGenerateOnStart)
-            Generate();
-    }
+    void Start() { if (Application.isPlaying && autoGenerateOnStart) Generate(); }
 
     [ContextMenu("Generate Dungeon")]
     public void Generate()
     {
         if (!ValidatePrefabs()) { Debug.LogWarning("Assign all required prefabs & NavMeshSurface."); return; }
         rng = new System.Random(seed);
-
         if (clearBeforeGenerate) ClearChildren();
-
         allRooms.Clear(); allCorridors.Clear(); stairLinks.Clear(); roomRoots.Clear();
 
-        // 1) BSP per floor -> rooms
         var floorsNodes = new List<BSPNode>();
         for (int f = 0; f < floors; f++)
         {
@@ -97,48 +65,25 @@ public class DungeonGenerator : MonoBehaviour
             floorsNodes.Add(root);
         }
 
-        // 2) Connect rooms per floor with simple nearest-neighbour corridors
-        foreach (var root in floorsNodes)
-            ConnectFloor(root);
+        foreach (var root in floorsNodes) ConnectFloor(root);
+        for (int f = 0; f < floors - 1; f++) LinkFloorsWithStairs(f, f + 1);
 
-        // 3) Cross-floor connections (stairs) – pair a random room on floor F with closest room on F+1
-        for (int f = 0; f < floors - 1; f++)
-            LinkFloorsWithStairs(f, f + 1);
-
-        // 4) Instantiate geometry (rooms, walls, corridors, doors, keys)
         BuildGeometry();
-
-        // 5) Build NavMesh
         if (navSurface) navSurface.BuildNavMesh();
     }
 
-    private bool ValidatePrefabs()
-    {
-        return floorTilePrefab && wallSegmentPrefab && closedDoorPrefab && keyPickupPrefab
-               && stairsUpPrefab && stairsDownPrefab && navSurface;
-    }
+    private bool ValidatePrefabs() => floorTilePrefab && wallSegmentPrefab && closedDoorPrefab && keyPickupPrefab && stairsUpPrefab && stairsDownPrefab && navSurface;
 
     private void ClearChildren()
     {
         var toDestroy = new List<GameObject>();
         foreach (Transform c in transform) toDestroy.Add(c.gameObject);
-        while (toDestroy.Count > 0)
-        {
-            var go = toDestroy[0]; toDestroy.RemoveAt(0);
-#if UNITY_EDITOR
-            if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(go);
-            else Destroy(go);
-#else
-            DestroyImmediate(go);
-#endif
-        }
+        foreach (var go in toDestroy) { if (!Application.isPlaying) DestroyImmediate(go); else Destroy(go); }
     }
 
     private void SplitRecursive(BSPNode n, int depth)
     {
-        if (depth >= maxSplitDepth || n.area.w < minLeafSize * 2 || n.area.d < minLeafSize * 2)
-            return;
-
+        if (depth >= maxSplitDepth || n.area.w < minLeafSize * 2 || n.area.d < minLeafSize * 2) return;
         bool splitVert = rng.NextDouble() < 0.5;
         if (n.area.w < n.area.d) splitVert = false;
         if (n.area.d < n.area.w) splitVert = true;
@@ -164,7 +109,6 @@ public class DungeonGenerator : MonoBehaviour
     {
         if (n.left == null && n.right == null)
         {
-            // pick a room size within the leaf
             int pad = 2;
             int w = rng.Next(minLeafSize / 2, n.area.w - pad);
             int d = rng.Next(minLeafSize / 2, n.area.d - pad);
@@ -184,7 +128,6 @@ public class DungeonGenerator : MonoBehaviour
     private RoomType PickRoomTypeForFloor(int floor)
     {
         if (roomTypes == null || roomTypes.Count == 0) return null;
-        // Simple weighted pick: prefer Normal; enforce floor constraints.
         for (int i = 0; i < 10; i++)
         {
             var tryRt = roomTypes[rng.Next(roomTypes.Count)];
@@ -195,7 +138,6 @@ public class DungeonGenerator : MonoBehaviour
 
     private void ConnectFloor(BSPNode root)
     {
-        // naive: connect each room to its nearest neighbour on the same floor
         var floorRooms = allRooms.FindAll(r => r.floorIdx == root.floorIdx);
         for (int i = 0; i < floorRooms.Count; i++)
         {
@@ -205,20 +147,10 @@ public class DungeonGenerator : MonoBehaviour
             {
                 if (i == j) continue;
                 var b = floorRooms[j];
-                var da = a.Center(transform.position.y, floorHeight);
-                var db = b.Center(transform.position.y, floorHeight);
-                float d = Vector3.SqrMagnitude(da - db);
+                float d = Vector3.SqrMagnitude(a.Center(transform.position.y, floorHeight) - b.Center(transform.position.y, floorHeight));
                 if (d < best) { best = d; bestB = b; }
             }
-            if (bestB != null)
-            {
-                allCorridors.Add(new Corridor
-                {
-                    a = a.Center(transform.position.y, floorHeight),
-                    b = bestB.Center(transform.position.y, floorHeight),
-                    floor = a.floorIdx
-                });
-            }
+            if (bestB != null) allCorridors.Add(new Corridor { a = a.Center(transform.position.y, floorHeight), b = bestB.Center(transform.position.y, floorHeight), floor = a.floorIdx });
         }
     }
 
@@ -227,15 +159,12 @@ public class DungeonGenerator : MonoBehaviour
         var roomsA = allRooms.FindAll(r => r.floorIdx == fA);
         var roomsB = allRooms.FindAll(r => r.floorIdx == fB);
         if (roomsA.Count == 0 || roomsB.Count == 0) return;
-
-        // choose a random room on A, link to closest on B
         var ra = roomsA[rng.Next(roomsA.Count)];
         Vector3 ca = ra.Center(transform.position.y, floorHeight);
         float best = float.MaxValue; Room bestB = null;
         foreach (var rb in roomsB)
         {
-            var cb = rb.Center(transform.position.y, floorHeight);
-            float d = Vector3.SqrMagnitude(new Vector3(cb.x, 0, cb.z) - new Vector3(ca.x, 0, ca.z));
+            float d = Vector3.SqrMagnitude(new Vector3(rb.Center(0, 0).x, 0, rb.Center(0, 0).z) - new Vector3(ca.x, 0, ca.z));
             if (d < best) { best = d; bestB = rb; }
         }
         if (bestB != null) stairLinks.Add((ca, bestB.Center(transform.position.y, floorHeight)));
@@ -243,7 +172,6 @@ public class DungeonGenerator : MonoBehaviour
 
     private void BuildGeometry()
     {
-        // simple: one root per floor
         var floorRoots = new List<Transform>();
         for (int f = 0; f < floors; f++)
         {
@@ -253,7 +181,6 @@ public class DungeonGenerator : MonoBehaviour
             floorRoots.Add(root);
         }
 
-        // rooms
         foreach (var r in allRooms)
         {
             Transform parent = floorRoots[r.floorIdx];
@@ -261,141 +188,92 @@ public class DungeonGenerator : MonoBehaviour
             roomGo.SetParent(parent, false);
             roomRoots[r] = roomGo.gameObject;
 
-            // build floor plane with tiled cubes
             for (int x = 0; x < r.rect.w; x++)
                 for (int z = 0; z < r.rect.d; z++)
-                {
-                    Vector3 pos = new Vector3(r.rect.x + x + 0.5f, 0, r.rect.z + z + 0.5f);
-                    var tile = Instantiate(floorTilePrefab, parent);
-                    tile.transform.localPosition = pos;
-                }
+                    Instantiate(floorTilePrefab, parent).transform.localPosition = new Vector3(r.rect.x + x + 0.5f, 0, r.rect.z + z + 0.5f);
 
-            // perimeter walls (coarse, every 1 meter)
             for (int x = 0; x < r.rect.w; x++)
             {
-                PlaceWall(parent, new Vector3(r.rect.x + x + 0.5f, 0, r.rect.z - 0.5f));
-                PlaceWall(parent, new Vector3(r.rect.x + x + 0.5f, 0, r.rect.z + r.rect.d + 0.5f));
+                PlaceWall(parent, new Vector3(r.rect.x + x + 0.5f, 0, r.rect.z - 0.5f), true);
+                PlaceWall(parent, new Vector3(r.rect.x + x + 0.5f, 0, r.rect.z + r.rect.d + 0.5f), true);
             }
             for (int z = 0; z < r.rect.d; z++)
             {
-                PlaceWall(parent, new Vector3(r.rect.x - 0.5f, 0, r.rect.z + z + 0.5f));
-                PlaceWall(parent, new Vector3(r.rect.x + r.rect.w + 0.5f, 0, r.rect.z + z + 0.5f));
+                PlaceWall(parent, new Vector3(r.rect.x - 0.5f, 0, r.rect.z + z + 0.5f), false);
+                PlaceWall(parent, new Vector3(r.rect.x + r.rect.w + 0.5f, 0, r.rect.z + z + 0.5f), false);
             }
 
-            // decoration via grammar rules
             if (r.type && r.type.decoration) DecorateRoom(r, parent);
         }
 
-        // corridors (as strips of floor tiles)
-        foreach (var c in allCorridors)
-        {
-            var parent = floorRoots[c.floor];
-            DrawCorridor(parent, c.a, c.b);
-        }
+        foreach (var c in allCorridors) DrawCorridor(floorRoots[c.floor], c.a, c.b);
 
-        // doors & keys (simple placement: if room is Locked, put a door at its entrance; if Key, place a pickup)
         foreach (var r in allRooms)
         {
             if (r.type == null) continue;
             if (r.type.kind == RoomKind.Locked)
             {
-                // place a door at front wall center
-                Vector3 front = new Vector3(r.rect.x + r.rect.w / 2f, 0, r.rect.z - 0.5f);
                 var d = Instantiate(closedDoorPrefab, roomRoots[r].transform.parent);
-                d.transform.localPosition = front;
-                var door = d.GetComponent<Door>(); if (door) { door.keyId = r.keyId; }
+                d.transform.localPosition = new Vector3(r.rect.x + r.rect.w / 2f, 0, r.rect.z - 0.5f);
+                var door = d.GetComponent<Door>(); if (door) door.keyId = r.keyId;
             }
             if (r.type.kind == RoomKind.Key)
             {
-                Vector3 kp = new Vector3(r.rect.x + r.rect.w / 2f, 0.6f, r.rect.z + r.rect.d / 2f);
                 var k = Instantiate(keyPickupPrefab, roomRoots[r].transform.parent);
-                k.transform.localPosition = kp;
-                var item = k.GetComponent<ItemPickup>(); if (item) { item.keyId = r.keyId; }
+                k.transform.localPosition = new Vector3(r.rect.x + r.rect.w / 2f, 0.6f, r.rect.z + r.rect.d / 2f);
+                var item = k.GetComponent<ItemPickup>(); if (item) item.keyId = r.keyId;
             }
         }
 
-        // stairs between floors
         foreach (var link in stairLinks)
         {
-            // place stairs up at 'from', stairs down at 'to'
-            var up = Instantiate(stairsUpPrefab, transform);
-            up.transform.position = link.from;
-            var down = Instantiate(stairsDownPrefab, transform);
-            down.transform.position = link.to;
+            Instantiate(stairsUpPrefab, link.from, Quaternion.identity, transform);
+            Instantiate(stairsDownPrefab, link.to, Quaternion.identity, transform);
         }
     }
 
-    private void PlaceWall(Transform parent, Vector3 localPos)
+    private void PlaceWall(Transform parent, Vector3 localPos, bool alongX)
     {
         var w = Instantiate(wallSegmentPrefab, parent);
+        w.transform.localRotation = alongX ? Quaternion.identity : Quaternion.Euler(0f, 90f, 0f);
         w.transform.localPosition = localPos + Vector3.up * (wallSegmentPrefab.transform.localScale.y * 0.5f);
     }
 
     private void DrawCorridor(Transform parent, Vector3 a, Vector3 b)
     {
-        // L-shaped corridor along grid between centers
-        Vector3 p = a; p.y = 0; Vector3 q = b; q.y = 0;
-        int x0 = Mathf.RoundToInt(p.x), z0 = Mathf.RoundToInt(p.z);
-        int x1 = Mathf.RoundToInt(q.x), z1 = Mathf.RoundToInt(q.z);
-
-        // horizontal then vertical
+        int x0 = Mathf.RoundToInt(a.x), z0 = Mathf.RoundToInt(a.z);
+        int x1 = Mathf.RoundToInt(b.x), z1 = Mathf.RoundToInt(b.z);
         int dx = x1 >= x0 ? 1 : -1;
         for (int x = x0; x != x1; x += dx)
-        {
             for (int w = -corridorWidth / 2; w <= corridorWidth / 2; w++)
-            {
-                var t = Instantiate(floorTilePrefab, parent);
-                t.transform.localPosition = new Vector3(x + 0.5f, 0, z0 + w + 0.5f);
-            }
-        }
+                Instantiate(floorTilePrefab, parent).transform.localPosition = new Vector3(x + 0.5f, 0, z0 + w + 0.5f);
         int dz = z1 >= z0 ? 1 : -1;
         for (int z = z0; z != z1; z += dz)
-        {
             for (int w = -corridorWidth / 2; w <= corridorWidth / 2; w++)
-            {
-                var t = Instantiate(floorTilePrefab, parent);
-                t.transform.localPosition = new Vector3(x1 + w + 0.5f, 0, z + 0.5f);
-            }
-        }
+                Instantiate(floorTilePrefab, parent).transform.localPosition = new Vector3(x1 + w + 0.5f, 0, z + 0.5f);
     }
 
     private void DecorateRoom(Room r, Transform parent)
     {
         var prof = r.type.decoration;
         float step = Mathf.Max(0.5f, prof.sampleStep);
-
         for (float x = r.rect.x + 1; x < r.rect.x + r.rect.w - 1; x += step)
             for (float z = r.rect.z + 1; z < r.rect.z + r.rect.d - 1; z += step)
             {
-                Vector3 p = new Vector3(x + 0.5f, 0, z + 0.5f);
-                foreach (var rule in prof.rules)
-                {
-                    if (rule.prefab == null) continue;
-                    if (Random.value <= rule.probability)
-                    {
-                        var go = Instantiate(rule.prefab, parent);
-                        go.transform.localPosition = p;
-                        break;
-                    }
-                }
+                if (Random.value <= 0.3f)
+                    Instantiate(prof.rules[Random.Range(0, prof.rules.Length)].prefab, parent).transform.localPosition = new Vector3(x + 0.5f, 0, z + 0.5f);
             }
     }
 
-    // ---- Gizmos ----
     private void OnDrawGizmosSelected()
     {
-        // rooms
         foreach (var r in allRooms)
         {
             Gizmos.color = r.type ? r.type.gizmoColor : Color.gray;
-            Vector3 center = r.Center(transform.position.y, floorHeight);
-            Vector3 size = new Vector3(r.rect.w, 0.1f, r.rect.d);
-            Gizmos.DrawWireCube(center, size);
+            Gizmos.DrawWireCube(r.Center(transform.position.y, floorHeight), new Vector3(r.rect.w, 0.1f, r.rect.d));
         }
-        // corridors
         Gizmos.color = Color.white;
         foreach (var c in allCorridors) Gizmos.DrawLine(c.a, c.b);
-        // stairs
         Gizmos.color = Color.cyan;
         foreach (var s in stairLinks) Gizmos.DrawLine(s.from, s.to);
     }
