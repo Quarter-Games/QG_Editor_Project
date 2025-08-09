@@ -124,4 +124,4 @@ MonoBehaviour:
   MaxSpeed: 7
   LifeTime: 6
   GravityStrength: 1
-  Color: {r: 1, g: 0, b: 0, a: 1}
+  Color: {r: 1, g: 0.30588236, b: 0, a: 1}
