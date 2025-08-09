@@ -13,16 +13,36 @@ MonoBehaviour:
   m_Name: Deco 1
   m_EditorClassIdentifier: 
   rules:
-  - prefab: {fileID: 0}
-    probability: 0
+  - prefab: {fileID: 4377933626515690895, guid: a1834b6441f5f964186d094e8fd881e5, type: 3}
+    probability: 1
     minSpacing: 0
     allowedTag: 
-  - prefab: {fileID: 0}
-    probability: 0
+  - prefab: {fileID: 3146705093901032357, guid: e0b2491dfd0bb9d4c9007eb87e252f4b, type: 3}
+    probability: 1
     minSpacing: 0
     allowedTag: 
-  - prefab: {fileID: 0}
-    probability: 0
+  - prefab: {fileID: 2157335988112527113, guid: c0b6670604b282847a0f26cf98f36820, type: 3}
+    probability: 1
+    minSpacing: 0
+    allowedTag: 
+  - prefab: {fileID: 6961769210357640265, guid: 44e723b3d5b0e8c478e3b502b94369d5, type: 3}
+    probability: 1
+    minSpacing: 0
+    allowedTag: 
+  - prefab: {fileID: 4453110336206570162, guid: ee13540b11108664bb2cd5974d81a24d, type: 3}
+    probability: 1
+    minSpacing: 0
+    allowedTag: 
+  - prefab: {fileID: 556515823571614727, guid: 2908a19ef1a7b3a49bfc9a55bf645e69, type: 3}
+    probability: 1
+    minSpacing: 0
+    allowedTag: 
+  - prefab: {fileID: 4302944737786620945, guid: d429c8a2280208c43ace747d82fa1864, type: 3}
+    probability: 1
+    minSpacing: 0
+    allowedTag: 
+  - prefab: {fileID: 4302944737786620945, guid: d429c8a2280208c43ace747d82fa1864, type: 3}
+    probability: 1
     minSpacing: 0
     allowedTag: 
   sampleStep: 2
