@@ -121,6 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8e2d576e2f317354eafab33a1f053c44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MaxSpeed: 5
-  Color: {r: 1, g: 1, b: 1, a: 1}
-  Lifetime: 2
+  MaxSpeed: 7
+  LifeTime: 6
+  GravityStrength: 1
+  Color: {r: 1, g: 0, b: 0, a: 1}
